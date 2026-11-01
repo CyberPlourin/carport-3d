@@ -61,6 +61,8 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
 .check input{accent-color:var(--accent)}
 .note{font-size:12px;color:var(--muted);margin:0;line-height:1.45}
 .privacy{color:var(--fg)}
+.tips summary{cursor:pointer;color:var(--fg)}
+.tips ul{margin:6px 0 0;padding-left:18px;display:grid;gap:3px}
 #dl-page{text-decoration:none;margin-top:4px}
 #dl-page:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .file{font-size:12px;max-width:100%}
@@ -92,6 +94,14 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
       <input type="file" id="upload" accept="image/*" class="visually-hidden">
       <label for="upload" class="btn-file">Changer la photo de fond…</label>
       <p class="note" id="photo-msg">Ou glissez une photo sur l'image, ou collez-la avec Ctrl + V.</p>
+      <details class="note tips"><summary><b>Conseils pour la photo</b></summary>
+        <ul>
+          <li>Placez-vous <b>face à l’emplacement</b>, à 8 à 15 m.</li>
+          <li>Restez <b>debout</b> et tenez le téléphone <b>droit, à l’horizontale</b>, sans viser vers le bas.</li>
+          <li>Évitez le grand-angle (0,5×) : gardez le zoom normal (1×).</li>
+          <li>Ensuite, réglez <b>Appareil photo › Hauteur</b> (≈ 1,60 m) et <b>Inclinaison</b> (≈ 0°) pour asseoir le carport au sol.</li>
+        </ul>
+      </details>
       <p class="note privacy">🔒 Votre photo reste sur votre ordinateur : elle n'est envoyée nulle part et disparaît quand vous fermez la page.</p>
     </div>
     <div class="group">
@@ -107,6 +117,7 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
         <button data-spin="-5" title="Tourner sur place, sens des aiguilles">↻ Tourner 5°</button>
       </div>
       <div id="g-view"></div>
+      <p class="note">Carport penché par rapport au sol de la photo ? Réglez d’abord <b>Appareil photo › Inclinaison</b> (la pente du regard du photographe), puis Basculer / Pencher si le terrain est en pente.</p>
     </div>
     <div class="group"><h2>Emplacement</h2><div id="g-place"></div></div>
     <div class="group">
@@ -169,12 +180,14 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
 <script>
 (function(){
 const DEG=Math.PI/180;
-const DEF={yaw:65,roll:0,dist:8.5,lat:1.3,elev:0,L:6,W:5,Hp:2.6,drop:0.6,roofA:25,roofB:20,np:2,ov:0.5,fslope:3,fascia:0.35,camH:1.6,pitch:-9,fov:50,sunAz:210,sunEl:40,shadow:0.4};
+const DEF={yaw:65,roll:0,tiltX:0,tiltZ:0,dist:8.5,lat:1.3,elev:0,L:6,W:5,Hp:2.6,drop:0.6,roofA:25,roofB:20,np:2,ov:0.5,fslope:3,fascia:0.35,camH:1.6,pitch:-9,fov:50,sunAz:210,sunEl:40,shadow:0.4};
 const DEFB={slab:true,mid:false,tie:false,roofType:'flat',fmat:'anthracite'};
 const P=Object.assign({},DEFB,DEF);
 const SL=[
  ['g-view','yaw','Orientation',0,359,1,'°'],
  ['g-view','roll','Pivoter dans l’image (+ = sens horaire)',-20,20,0.5,'°'],
+ ['g-view','tiltX','Basculer avant / arrière (+ = vers vous)',-30,30,0.5,'°'],
+ ['g-view','tiltZ','Pencher gauche / droite (+ = vers la gauche)',-30,30,0.5,'°'],
  ['g-place','dist','Distance',3,30,0.1,' m'],
  ['g-place','lat','Décalage latéral',-10,10,0.1,' m'],
  ['g-place','elev','Monter / descendre',-4,3,0.05,' m'],
@@ -384,10 +397,13 @@ function buildFlat(){
 
 function update(){
   camera.fov=P.fov;camera.aspect=ar;camera.position.set(0,P.camH,0);camera.rotation.set(P.pitch*DEG,0,P.roll*DEG);camera.updateProjectionMatrix();
-  group.position.set(P.lat,P.elev,-P.dist);group.rotation.y=P.yaw*DEG;
+  // Rotations autour du centre 3D du carport (mi-hauteur), pas de sa base
+  group.rotation.order='ZXY';group.rotation.set(P.tiltX*DEG,P.yaw*DEG,P.tiltZ*DEG);
+  const ctr=new THREE.Vector3(0,P.Hp/2,0),rc=ctr.clone().applyEuler(group.rotation);
+  group.position.set(P.lat,P.elev,-P.dist).add(ctr).sub(rc);
   plane.constant=-P.elev;
   const az=P.sunAz*DEG,el=P.sunEl*DEG;
-  sun.position.set(group.position.x+Math.sin(az)*Math.cos(el)*30,P.elev+Math.sin(el)*30,group.position.z-Math.cos(az)*Math.cos(el)*30);
+  sun.position.set(P.lat+Math.sin(az)*Math.cos(el)*30,P.elev+Math.sin(el)*30,-P.dist-Math.cos(az)*Math.cos(el)*30);
   shadowMat.opacity=P.shadow;
   for(const m of built.children){if(m.material===concrete)m.visible=P.slab;}
   render();
@@ -415,7 +431,7 @@ function groundAt(e){
 }
 stage.addEventListener('pointerdown',e=>{
   const g=groundAt(e);if(!g)return;
-  drag={dx:group.position.x-g.x,dz:group.position.z-g.z};stage.setPointerCapture(e.pointerId);stage.classList.add('drag');
+  drag={dx:P.lat-g.x,dz:-P.dist-g.z};stage.setPointerCapture(e.pointerId);stage.classList.add('drag');
 });
 stage.addEventListener('pointermove',e=>{
   if(!drag)return;const g=groundAt(e);if(!g)return;
