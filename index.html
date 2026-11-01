@@ -61,6 +61,7 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
 .check input{accent-color:var(--accent)}
 .note{font-size:12px;color:var(--muted);margin:0;line-height:1.45}
 .privacy{color:var(--fg)}
+.reset-top{width:100%;font-weight:600}
 .tips summary{cursor:pointer;color:var(--fg)}
 .tips ul{margin:6px 0 0;padding-left:18px;display:grid;gap:3px}
 #dl-page{text-decoration:none;margin-top:4px}
@@ -89,6 +90,7 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
   </section>
 
   <aside class="panel">
+    <button id="reset-top" class="reset-top" title="Remet le carport, la vue, l'appareil photo et le soleil comme au départ. La photo est conservée.">↺ Revenir aux réglages de départ</button>
     <div class="group">
       <h2>Photo de fond</h2>
       <input type="file" id="upload" accept="image/*" class="visually-hidden">
@@ -156,7 +158,7 @@ button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(
     <div class="group"><h2>Soleil</h2><div id="g-sun"></div></div>
     <div class="actions">
       <button class="primary" id="export">Générer l'image</button>
-      <button id="reset">Réinitialiser</button>
+      <button id="reset">Réinitialiser (la photo est conservée)</button>
       <a class="btn-file" id="dl-page" href="index.html" download="Carport_3D_sur_photo.html">Télécharger cet outil (fichier HTML)</a>
       <p class="note">Pour l'ouvrir plus tard depuis votre ordinateur : double-clic sur le fichier. Une connexion Internet reste nécessaire pour l'affichage 3D.</p>
     </div>
@@ -469,6 +471,7 @@ const fmatSel=document.getElementById('fmat');
 fmatSel.addEventListener('change',()=>{P.fmat=fmatSel.value;build();update();});
 fmatSel.value=P.fmat;
 syncRoofUI();
+document.getElementById('reset-top').addEventListener('click',()=>document.getElementById('reset').click());
 document.getElementById('reset').addEventListener('click',()=>{
   Object.keys(DEF).forEach(k=>setP(k,DEF[k]));Object.assign(P,DEFB);
   ['slab','tie'].forEach(k=>document.getElementById(k).checked=P[k]);
